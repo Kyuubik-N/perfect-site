@@ -1,0 +1,20 @@
+# Node / Vite
+node_modules/
+dist/
+.vite/
+*.log
+
+# Env & локальные настройки
+.env
+.env.*
+*.local
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# ОС/редакторы
+.DS_Store
+Thumbs.db
+.vscode/

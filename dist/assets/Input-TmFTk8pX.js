@@ -1,1 +1,0 @@
-import{j as t}from"./index-D8mHM_0A.js";function i({className:n="",children:s,...r}){return t.jsx("div",{className:["card",n].join(" "),...r,children:s})}function o({className:n="",...s}){return t.jsx("input",{className:["input",n].join(" "),...s})}export{i as C,o as I};
