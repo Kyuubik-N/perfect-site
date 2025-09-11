@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0b1814">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="description" content="Kyuubik — личное пространство: заметки, календарь и файлы с пастельно‑зелёной темой и эффектом Liquid Glass.">
+    <link rel="canonical" href="/" />
+    <meta property="og:image" content="/favicon.svg">
+    <meta property="og:title" content="Kyuubik — личное пространство">
+    <meta property="og:description" content="Заметки, календарь и файлы — быстро и красиво.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Kyuubik — личное пространство">
+    <meta name="twitter:description" content="Заметки, календарь и файлы — быстро и красиво.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    <title>Kyuubik</title>
+    <script>
+      // Apply theme ASAP to avoid flash
+      (function(){try{var s=localStorage.getItem('theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches; if(s==='dark'||(!s&&m))document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark')}catch(_){}})()
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Kyuubik",
+        "url": "/",
+        "inLanguage": "ru-RU",
+        "description": "Личное пространство: заметки, календарь и файлы"
+      }
+    </script>
+    <script type="module" crossorigin src="/assets/index-D8mHM_0A.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DqIilp67.css">
+  <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  <body>
+    <script>
+      // Ensure canonical and og:url are absolute in production builds
+      (function(){
+        try {
+          var origin = window.location.origin
+          var canon = document.querySelector('link[rel="canonical"]')
+          if (canon) { var href = canon.getAttribute('href') || '/'; if (!/^https?:/i.test(href)) canon.setAttribute('href', origin + href) }
+          var og = document.querySelector('meta[property="og:url"]')
+          if (og) { var u = og.getAttribute('content') || '/'; if (!/^https?:/i.test(u)) og.setAttribute('content', origin + u) }
+        } catch(_) {}
+      })()
+    </script>
+    <a href="#main" class="sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:px-3 focus:py-2 focus:rounded focus:bg-white/20 focus:text-white focus:backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-accent-400/70">Пропустить к содержимому</a>
+    <noscript>
+      <div style="max-width:720px;margin:5rem auto;padding:1rem 1.25rem;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(10px)">
+        Для работы сайта требуется JavaScript. Пожалуйста, включите его в настройках браузера.
+      </div>
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>

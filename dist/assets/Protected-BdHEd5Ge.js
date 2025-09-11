@@ -1,0 +1,1 @@
+import{b as r,j as i}from"./index-D8mHM_0A.js";function s({children:t}){const{user:e,loading:n}=r();return n?i.jsx("div",{className:"container-wide pt-32 text-white/70",children:"Загрузка…"}):e?t:(window.location.href="/login",null)}export{s as P};
