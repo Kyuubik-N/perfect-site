@@ -1,12 +1,14 @@
 Kyuubik — personal cloud (notes, calendar, files)
 
 Quick start
+
 - Copy `.env` and set secrets. Recommended: set `JWT_SECRET` for production.
 - Dev: `npm run dev:all` (starts API on 5174 and Vite on 5173)
 - API only: `npm run api:dev`
 - Build SPA: `npm run build` and then `npm run api` to serve from `dist/`
 
 Notable improvements
+
 - Security: Helmet headers, gzip compression, basic CSRF origin check for mutating requests, and rate‑limiting for auth endpoints.
 - Cookies: `secure` enabled automatically in production. `sameSite=lax` kept for CSRF resilience.
 - CORS: Accepts `127.0.0.1`/`localhost` and configurable `APP_ORIGIN` list.
@@ -17,6 +19,7 @@ Notable improvements
 - Frontend: Robust API helper with timeout/host fallbacks and optional `VITE_API_BASE` override.
 
 Configuration
+
 - `APP_ORIGIN`: comma‑separated list of allowed frontend origins (for CORS and CSRF origin checks).
 - `API_HOST`/`API_PORT`: where the API binds (defaults `127.0.0.1:5174`).
 - `JWT_SECRET`: token signing secret (required in production).
@@ -29,5 +32,6 @@ Configuration
     If `BOT_PASSWORD` is not set, a random password is generated and printed to logs.
 
 Notes
+
 - Service Worker is disabled in dev; PWA is active in production builds.
 - The API serves the built SPA in production when `dist/` exists.

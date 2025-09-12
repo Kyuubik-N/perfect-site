@@ -1,0 +1,260 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-1: #0a1512; /* базовый тёмный фон */
+    --bg-2: #0f201a; /* более светлый */
+    --noise-opacity: 0.035;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply antialiased font-sans text-white/90 selection:bg-accent-600/40 selection:text-white;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+    min-height: 100vh;
+    /* Обновлённый мягкий пастельный градиент-меш на фоне */
+    background:
+      radial-gradient(1200px 800px at 20% -10%, rgba(111, 232, 190, 0.22) 0%, transparent 60%),
+      radial-gradient(1000px 700px at 110% 40%, rgba(182, 255, 227, 0.18) 0%, transparent 60%),
+      radial-gradient(900px 600px at 50% 120%, rgba(63, 211, 167, 0.12) 0%, transparent 60%),
+      linear-gradient(135deg, #0b1814, #0f221d 40%, #0b1814);
+    background-attachment: fixed;
+  }
+  /* Шум для борьбы с бэндингом */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+    opacity: 0.035;
+    mix-blend-mode: soft-light;
+  }
+  /* Едва заметная сетка для глубины */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size:
+      28px 28px,
+      28px 28px;
+    opacity: 0.06;
+    mask-image: radial-gradient(1200px 800px at 50% 10%, black, transparent 70%);
+    -webkit-mask-image: radial-gradient(1200px 800px at 50% 10%, black, transparent 70%);
+  }
+}
+
+/* Мягкая «вуаль», чтобы пузырьки на фоне не перебивали контент */
+.veil {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(65% 50% at 50% 22%, rgba(0, 0, 0, 0.3), transparent 60%),
+    radial-gradient(55% 45% at 80% 80%, rgba(0, 0, 0, 0.22), transparent 60%);
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    backdrop-filter: blur(25px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 1.25rem;
+    box-shadow: theme('boxShadow.glass');
+  }
+
+  /* Unified glass button styling used across the app */
+  .glass-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-sm transition duration-200 select-none;
+    background: rgba(255, 255, 255, 0.14);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.9);
+  }
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+  .glass-button:hover {
+    @apply opacity-80;
+  }
+  .glass-button:active {
+    transform: translateY(0);
+  }
+  .glass-button--icon {
+    @apply px-2 py-1;
+    min-width: 2rem;
+    height: 2rem;
+  }
+  .glass-toggle-active {
+    box-shadow: theme('boxShadow.focus');
+    border-color: rgba(79, 212, 166, 0.45);
+  }
+
+  /* Group adjacent glass buttons into a single attached control */
+  .btn-group {
+    display: flex;
+    align-items: stretch;
+  }
+  .btn-group > .glass-button {
+    border-radius: 0;
+  }
+  .btn-group > .glass-button + .glass-button {
+    margin-left: -1px;
+  }
+  .btn-group > .glass-button:first-child {
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
+  }
+  .btn-group > .glass-button:last-child {
+    border-top-right-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 transition-all duration-400 outline-none select-none;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(15px);
+  }
+  .btn:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: translateY(-1px);
+  }
+  .btn:active {
+    transform: translateY(0);
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, rgba(111, 232, 190, 0.35), rgba(79, 212, 166, 0.25));
+    border: 1px solid rgba(111, 232, 190, 0.35);
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .btn:focus-visible {
+    box-shadow: theme('boxShadow.focus');
+  }
+
+  /* Small pill chip */
+  .chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border align-middle;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .input {
+    @apply w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 placeholder-white/40 transition;
+  }
+  .input:hover {
+    @apply border-white/15;
+  }
+  .input:focus {
+    @apply outline-none ring-2 ring-accent-400/60 border-transparent;
+  }
+
+  .card {
+    @apply glass p-6;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    background: linear-gradient(90deg, #6fe8be, #b6ffe3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* Чёткие заголовки и баланс строк */
+  .heading {
+    @apply tracking-tight leading-tight;
+    text-wrap: balance;
+  }
+  .muted {
+    @apply text-white/65;
+  }
+  .text-glow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+  .container-narrow {
+    @apply container max-w-5xl;
+  }
+  .container-wide {
+    @apply container max-w-6xl;
+  }
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30 rounded-lg;
+  }
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .motion-safe\:float {
+    /* вспомогательный для reduced-motion */
+  }
+}
+
+/* Better focus ring for all */
+*:focus-visible {
+  @apply outline-none;
+}
+
+@layer utilities {
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-spin-slow,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
+
+/* Тонкий аккуратный скроллбар */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Переходы между страницами */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  filter: saturate(0.95);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+.page-exit {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}

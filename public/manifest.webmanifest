@@ -1,0 +1,12 @@
+{
+  "name": "Kyuubik",
+  "short_name": "Kyuubik",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1814",
+  "theme_color": "#0b1814",
+  "description": "Kyuubik — личное пространство: заметки, календарь и файлы.",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

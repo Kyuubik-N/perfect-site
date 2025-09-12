@@ -21,14 +21,19 @@ function getTargetUserId(): number {
   if (envId && String(Number(envId)) === String(envId)) return Number(envId)
 
   const username = process.env.BOT_USERNAME || 'telegram'
-  const found = db.prepare('SELECT id FROM users WHERE username=?').get(username) as { id: number } | undefined
+  const found = db.prepare('SELECT id FROM users WHERE username=?').get(username) as
+    | { id: number }
+    | undefined
   if (found && typeof found.id === 'number') return found.id
 
   const password = process.env.BOT_PASSWORD || `tg-${Math.random().toString(36).slice(2, 10)}`
   const hash = bcrypt.hashSync(password, 10)
-  const id = db.prepare('INSERT INTO users(username, password) VALUES(?, ?)').run(username, hash).lastInsertRowid as number
+  const id = db.prepare('INSERT INTO users(username, password) VALUES(?, ?)').run(username, hash)
+    .lastInsertRowid as number
   if (!process.env.BOT_PASSWORD) {
-    console.warn(`[bot] Created user "${username}" with a random password. Set BOT_PASSWORD to control it.`)
+    console.warn(
+      `[bot] Created user "${username}" with a random password. Set BOT_PASSWORD to control it.`,
+    )
   }
   return id
 }
@@ -46,7 +51,12 @@ bot.command('addnote', (ctx) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = new Date().toISOString().slice(0, 10)
 
     const userId = getTargetUserId()
-    db.prepare('INSERT INTO notes(userId,title,text,date) VALUES(?,?,?,?)').run(userId, title, text, date)
+    db.prepare('INSERT INTO notes(userId,title,text,date) VALUES(?,?,?,?)').run(
+      userId,
+      title,
+      text,
+      date,
+    )
     ctx.reply('Готово ✅')
   } catch (e) {
     console.error('[bot] addnote error:', e)
