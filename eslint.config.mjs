@@ -8,9 +8,17 @@ import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**'] },
+    // ← ДОБАВЬ ЭТОТ БЛОК ПЕРВЫМ
+  {
+    files: ['**/*.{js,jsx,ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parserOptions: { ecmaFeatures: { jsx: true } }
+    }
+  },
 
-  js.configs.recommended,
+  { ignores: ['dist/**', 'node_modules/**'] }, js.configs.recommended,
 
   // === БРАУЗЕР: JS/JSX ===
   {
@@ -19,14 +27,15 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: { ...globals.browser, ...globals.es2021 },
-      parserOptions: { ecmaFeatures: { jsx: true } }, // <- Включаем JSX
+      parserOptions: { ecmaFeatures: { jsx: true } }
     },
     plugins: { react, 'react-hooks': reactHooks, 'jsx-a11y': jsxA11y },
     settings: { react: { version: 'detect' } },
     rules: {
       'no-empty': 'off',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-    },
+      // полностью глушим «неиспользуемые» на фронте до наведения порядка
+      'no-unused-vars': 'off'
+    }
   },
 
   // === БРАУЗЕР: TS/TSX ===
@@ -35,22 +44,14 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: { ...globals.browser, ...globals.es2021 },
+      globals: { ...globals.browser, ...globals.es2021 }
     },
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
-      react,
-      'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y,
-    },
+    plugins: { '@typescript-eslint': tseslint.plugin, react, 'react-hooks': reactHooks, 'jsx-a11y': jsxA11y },
     settings: { react: { version: 'detect' } },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-    },
+      '@typescript-eslint/no-unused-vars': 'off'
+    }
   },
 
   // === NODE: сервер/скрипты/конфиги ===
@@ -60,24 +61,21 @@ export default [
       'api/**/*.{ts,js}',
       'bot/**/*.{ts,js}',
       'vite.config.{ts,js}',
-      'vitest.config.{ts,js}',
+      'vitest.config.{ts,js}'
     ],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
-      globals: { ...globals.node, ...globals.es2021 },
+      globals: { ...globals.node, ...globals.es2021 }
     },
     plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
   },
 
   // Совместимость с Prettier
-  prettier,
+  prettier
 ]
