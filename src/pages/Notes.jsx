@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import Button from '../components/ui/Button'
 import GlassCard from '../components/GlassCard'
 
+// Страница для управления заметками. Позволяет добавлять, редактировать и удалять заметки.
 export default function NotesPage() {
   const [notes, setNotes] = React.useState([])
   const [title, setTitle] = React.useState('')
@@ -45,6 +46,7 @@ export default function NotesPage() {
       <section className="max-w-6xl mx-auto px-6 py-10">
         <h2 className="text-2xl font-semibold gradient-text">Заметки</h2>
 
+        {/* Форма создания новой заметки */}
         <form onSubmit={onAdd} className="mt-6 glass p-4 flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row gap-3">
             <input
@@ -70,6 +72,7 @@ export default function NotesPage() {
           />
         </form>
 
+        {/* Список существующих заметок */}
         <div className="mt-6 grid gap-4">
           {notes.length === 0 && <div className="text-white/60">Пока нет заметок</div>}
           {notes.map((n) => (
@@ -81,7 +84,30 @@ export default function NotesPage() {
               {n.content && (
                 <div className="mt-2 text-white/80 whitespace-pre-wrap">{n.content}</div>
               )}
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex gap-2 flex-wrap">
+                {/* Кнопка редактирования заметки */}
+                <button
+                  onClick={async () => {
+                    const newTitle = prompt('Новое название', n.title || '')
+                    if (newTitle == null) return
+                    const t = newTitle.trim() || n.title
+                    const newContent = prompt('Новый текст', n.content || '')
+                    if (newContent == null) return
+                    try {
+                      await api(`/api/notes/${n.id}`, {
+                        method: 'PATCH',
+                        body: { title: t, text: newContent, date: n.date },
+                      })
+                    } catch (e) {
+                      console.error(e)
+                    }
+                    await load()
+                  }}
+                  className="px-3 py-1.5 rounded-md focus-ring text-yellow-300 hover:bg-yellow-900/10"
+                >
+                  Изменить
+                </button>
+                {/* Кнопка удаления заметки */}
                 <button
                   onClick={async () => {
                     try {

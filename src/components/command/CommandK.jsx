@@ -1,81 +1,145 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Button from '../ui/Button'
+import React from 'react'
+import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
-function useActions() {
-  const navigate = useNavigate()
-  return useMemo(
-    () => [
-      { label: 'Главная', run: () => navigate('/') },
-      { label: 'Заметки', run: () => navigate('/notes') },
-      { label: 'Календарь', run: () => navigate('/calendar') },
-      { label: 'Каталог', run: () => navigate('/catalog') },
-      { label: 'Файлы', run: () => navigate('/files') },
-      {
-        label: 'Добавить заметку',
-        run: () => document.dispatchEvent(new CustomEvent('quick-add-note')),
-      },
-    ],
-    [navigate],
-  )
-}
-
-export default function CommandK() {
-  const actions = useActions()
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-
-  useEffect(() => {
-    function onKey(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+function useHotkey(toggle) {
+  React.useEffect(() => {
+    const onKey = (e) => {
+      const metaK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'
+      if (metaK) {
         e.preventDefault()
-        setOpen((o) => !o)
+        toggle()
       }
+      if (e.key === 'Escape') toggle(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [toggle])
+}
 
-  const list = actions.filter((a) => a.label.toLowerCase().includes(q.toLowerCase()))
+const actions = [
+  { id: 'home', label: 'Главная', to: '/' },
+  { id: 'notes', label: 'Заметки', to: '/notes' },
+  { id: 'calendar', label: 'Календарь', to: '/calendar' },
+  { id: 'catalog', label: 'Каталог', to: '/catalog' },
+  { id: 'files', label: 'Файлы', to: '/files' },
+  { id: 'library', label: 'Библиотека', to: '/library' },
+  { id: 'settings', label: 'Настройки', to: '/settings' },
+]
+
+export default function CommandK({ hideButton = false }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [open, setOpen] = React.useState(false)
+  const [q, setQ] = React.useState('')
+  const [index, setIndex] = React.useState(0)
+  const inputRef = React.useRef(null)
+  const lastActive = React.useRef(null)
+
+  const toggle = (v) => setOpen((prev) => (typeof v === 'boolean' ? v : !prev))
+  useHotkey(toggle)
+
+  React.useEffect(() => {
+    if (open) setOpen(false)
+  }, [location.pathname])
+
+  React.useEffect(() => {
+    if (open) {
+      lastActive.current = document.activeElement
+      document.body.classList.add('overflow-hidden')
+      setTimeout(() => inputRef.current?.focus(), 0)
+    } else {
+      document.body.classList.remove('overflow-hidden')
+      if (lastActive.current && lastActive.current.focus) lastActive.current.focus()
+      setQ('')
+      setIndex(0)
+    }
+  }, [open])
+
+  const items = React.useMemo(() => {
+    const s = q.trim().toLowerCase()
+    if (!s) return actions
+    return actions.filter((a) => a.label.toLowerCase().includes(s))
+  }, [q])
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setIndex((i) => Math.min(items.length - 1, i + 1))
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setIndex((i) => Math.max(0, i - 1))
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const it = items[index]
+      if (it?.to) navigate(it.to)
+      setOpen(false)
+    }
+  }
 
   return (
     <>
-      <Button className="hidden sm:flex" onClick={() => setOpen(true)}>
-        ⌘K
-      </Button>
-      {open && (
-        <div
-          className="fixed inset-0 z-[70] grid place-items-start pt-28 bg-black/30 backdrop-blur-xs"
-          onClick={() => setOpen(false)}
+      {!hideButton && (
+        <button
+          type="button"
+          className="glass-button glass-button--icon focus-ring"
+          onClick={() => toggle(true)}
+          title="Командная палитра (Ctrl/Cmd + K)"
+          aria-label="Командная палитра"
         >
-          <div className="card w-[min(640px,92vw)] mx-auto" onClick={(e) => e.stopPropagation()}>
-            <input
-              autoFocus
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Что сделать?"
-              className="input w-full mb-3"
-            />
-            <ul className="max-h-72 overflow-auto">
-              {list.map((a, i) => (
-                <li key={i}>
+          ⌘K
+        </button>
+      )}
+
+      {open &&
+        createPortal(
+          <div
+            className="k-overlay"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setOpen(false)
+            }}
+          >
+            <div className="k-panel glass" onKeyDown={onKeyDown}>
+              <div className="k-search">
+                <input
+                  ref={inputRef}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Что сделать? (нажмите Esc для выхода)"
+                  className="k-input"
+                  aria-label="Поиск команды"
+                />
+              </div>
+              <div className="k-list" role="listbox">
+                {items.length === 0 && <div className="k-empty">Ничего не найдено</div>}
+                {items.map((it, i) => (
                   <button
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/[.06]"
+                    key={it.id}
+                    role="option"
+                    aria-selected={i === index}
+                    className={`k-item ${i === index ? 'active' : ''}`}
+                    onMouseEnter={() => setIndex(i)}
                     onClick={() => {
-                      a.run()
+                      if (it.to) navigate(it.to)
                       setOpen(false)
                     }}
                   >
-                    {a.label}
+                    <span className="k-item-label">{it.label}</span>
+                    <span className="k-item-hint">{i === index ? 'Enter' : ''}</span>
                   </button>
-                </li>
-              ))}
-              {list.length === 0 && <li className="text-white/60 px-3 py-2">Ничего не найдено</li>}
-            </ul>
-            <div className="text-[11px] text-white/50 mt-2">Подсказка: нажмите Ctrl/Cmd + K</div>
-          </div>
-        </div>
-      )}
+                ))}
+              </div>
+              <div className="k-hint">
+                Подсказка: нажмите <b>Ctrl/Cmd + K</b>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   )
 }

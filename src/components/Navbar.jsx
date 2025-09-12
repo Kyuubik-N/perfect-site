@@ -1,139 +1,165 @@
 import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useResolvedPath, useMatch } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Button from './ui/Button'
 import CommandK from './command/CommandK'
-import ApiStatus from './ApiStatus'
-import { useTranslation } from 'react-i18next'
+
+function applyThemeMode(mode) {
+  const root = document.documentElement
+  if (mode === 'auto') {
+    try {
+      localStorage.removeItem('theme')
+    } catch {}
+    const dark = window.matchMedia?.('(prefers-color-scheme: dark)')?.matches
+    root.classList.toggle('dark', !!dark)
+    root.setAttribute('data-theme', dark ? 'dark' : 'light')
+  } else {
+    root.classList.toggle('dark', mode === 'dark')
+    root.setAttribute('data-theme', mode)
+    try {
+      localStorage.setItem('theme', mode)
+    } catch {}
+  }
+}
+function getInitialMode() {
+  const saved = localStorage.getItem('theme')
+  if (saved === 'light' || saved === 'dark') return saved
+  return 'auto'
+}
+
+function ThemeModeSwitch() {
+  const [mode, setMode] = React.useState(getInitialMode())
+  React.useEffect(() => {
+    applyThemeMode(mode)
+  }, [mode])
+  React.useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
+    const onChange = () => {
+      if (mode === 'auto') applyThemeMode('auto')
+    }
+    mq?.addEventListener?.('change', onChange)
+    return () => mq?.removeEventListener?.('change', onChange)
+  }, [mode])
+
+  const Btn = ({ val, title, children }) => (
+    <button
+      className={`seg-mini-btn ${mode === val ? 'is-active' : ''}`}
+      onClick={() => setMode(val)}
+      title={title}
+      aria-pressed={mode === val}
+      type="button"
+    >
+      {children}
+    </button>
+  )
+
+  return (
+    <div className="seg-mini" role="group" aria-label="Переключатель темы">
+      <Btn val="auto" title="Авто (системная)">
+        ⎋
+      </Btn>
+      <Btn val="light" title="Светлая">
+        ☀️
+      </Btn>
+      <Btn val="dark" title="Тёмная">
+        🌙
+      </Btn>
+    </div>
+  )
+}
+
+/** Кнопка-таб: не триггерит переход, если уже активна */
+function TabLink({ to, end, children }) {
+  const resolved = useResolvedPath(to)
+  const match = useMatch({ path: resolved.pathname, end: !!end })
+  const onClick = (e) => {
+    if (match) e.preventDefault()
+  } // повторный клик — игнор
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onClick}
+      aria-current={match ? 'page' : undefined}
+      className={({ isActive }) =>
+        'navlink px-2 ' + (isActive ? 'is-active text-white' : 'text-fg')
+      }
+    >
+      {children}
+    </NavLink>
+  )
+}
 
 export default function Navbar() {
-  const { i18n } = useTranslation()
-  const location = useLocation()
-  const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const normalizedPath = (p) => {
-    const s = (p || '/').replace(/\/+$/, '')
-    return s === '' ? '/' : s
-  }
-  const path = normalizedPath(location.pathname)
-  const lastNonHomeRef = React.useRef('/catalog')
+  const navigate = useNavigate()
+  const [hidden, setHidden] = React.useState(false)
+  const lastY = React.useRef(0)
 
-  // init last route from storage (safe)
   React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem('last_non_home_path')
-      if (saved && saved.startsWith('/')) lastNonHomeRef.current = saved
-    } catch {}
+    const onScroll = () => {
+      const y = window.scrollY || 0
+      const down = y > lastY.current
+      const delta = Math.abs(y - lastY.current)
+      if (y < 12 || delta < 6) setHidden(false)
+      else setHidden(down)
+      lastY.current = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // track last non-home route (safe)
-  React.useEffect(() => {
-    if (location.pathname !== '/') {
-      lastNonHomeRef.current = location.pathname
-      try {
-        localStorage.setItem('last_non_home_path', location.pathname)
-      } catch {}
-    }
-  }, [location.pathname])
-
-  const onToggleHome = () => {
-    const to = path === '/' ? lastNonHomeRef.current || '/notes' : '/'
-    setTimeout(() => navigate(to), 0)
-  }
-  const onToggleCatalog = () => {
-    const to = path === '/catalog' ? '/' : '/catalog'
-    setTimeout(() => navigate(to), 0)
-  }
-
-  function ThemeToggle() {
-    const [dark, setDark] = React.useState(() =>
-      document.documentElement.classList.contains('dark'),
-    )
-    const toggle = () => {
-      const next = !dark
-      setDark(next)
-      if (next) {
-        document.documentElement.classList.add('dark')
-        localStorage.setItem('theme', 'dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-        localStorage.setItem('theme', 'light')
-      }
-    }
-    return (
-      <button
-        onClick={toggle}
-        className="glass-button glass-button--icon focus-ring"
-        aria-label="Переключить тему"
-        title={dark ? 'Тёмная тема' : 'Светлая тема'}
-      >
-        {dark ? '🌙' : '☀️'}
-      </button>
-    )
-  }
-
-  function LanguageSwitcher() {
-    const active = i18n.language?.startsWith('ru') ? 'ru' : 'en'
-    const change = (lng) => i18n.changeLanguage(lng)
-    return (
-      <div
-        className="hidden sm:inline-flex items-center gap-1 glass px-1 py-1 rounded-xl"
-        role="group"
-        aria-label="Выбор языка"
-      >
-        {['ru', 'en'].map((lng) => (
-          <button
-            key={lng}
-            onClick={() => change(lng)}
-            className={`glass-button text-xs ${active === lng ? 'glass-toggle-active bg-white/10' : ''}`}
-            aria-pressed={active === lng}
-            title={lng.toUpperCase()}
-          >
-            {lng.toUpperCase()}
-          </button>
-        ))}
-      </div>
-    )
-  }
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 mx-auto container-wide mt-3 glass px-4 py-2">
+    <nav
+      className="glass-nav fixed top-0 inset-x-0 z-[60] mx-auto container-wide mt-3 px-4 py-2 transition-all duration-300"
+      data-hidden={hidden ? 'true' : 'false'}
+    >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-8 rounded-xl bg-accent-600/30 grid place-items-center text-accent-100 font-bold">
+        <button
+          className="flex items-center gap-3"
+          onClick={() => navigate('/')}
+          aria-label="На главную"
+          title="На главную"
+        >
+          <div className="size-8 rounded-xl bg-accent-soft grid place-items-center text-accent font-bold">
             K
           </div>
           <span className="heading text-lg gradient-text">Kyuubik</span>
-        </div>
-        <ul className="hidden sm:flex items-center gap-6 text-white/85">
+        </button>
+
+        <ul className="hidden sm:flex items-center gap-2">
           <li>
-            <button
-              type="button"
-              onClick={onToggleHome}
-              className={`rounded-md px-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70 ${path === '/' ? 'text-white' : ''}`}
-              title={path === '/' ? 'Открыть последнюю страницу' : 'Вернуться на главную'}
-            >
+            <TabLink to="/" end>
               Главная
-            </button>
+            </TabLink>
           </li>
           <li>
-            <button
-              type="button"
-              onClick={onToggleCatalog}
-              className={`rounded-md px-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70 ${path === '/catalog' ? 'text-white' : ''}`}
-              title={path === '/catalog' ? 'Закрыть каталог' : 'Открыть каталог'}
-            >
-              Каталог
-            </button>
+            <TabLink to="/catalog">Каталог</TabLink>
+          </li>
+          <li>
+            <TabLink to="/notes">Заметки</TabLink>
+          </li>
+          <li>
+            <TabLink to="/files">Файлы</TabLink>
+          </li>
+          <li>
+            <TabLink to="/calendar">Календарь</TabLink>
           </li>
         </ul>
+
         <div className="flex items-center gap-2">
-          <ApiStatus />
-          <CommandK />
-          <LanguageSwitcher />
-          <ThemeToggle />
+          <CommandK hideButton />
+          <ThemeModeSwitch />
+          <button
+            className="glass-button glass-button--icon"
+            onClick={() => navigate('/settings')}
+            title="Настройки"
+          >
+            ⚙️
+          </button>
           {user ? (
             <>
-              <span className="hidden sm:inline text-white/80">{user.username}</span>
+              <span className="hidden sm:inline text-fg/80">{user.username}</span>
               <Button onClick={logout}>Выйти</Button>
             </>
           ) : (

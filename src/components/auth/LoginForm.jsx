@@ -1,64 +1,61 @@
-import { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
-import Card from '../ui/Card'
-import Input from '../ui/Input'
-import Button from '../ui/Button'
-import { useToast } from '../toast/Toaster'
+import React from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { post } from '../../lib/api'
 
 export default function LoginForm() {
-  const { login } = useAuth()
-  const { toast } = useToast()
-  const [username, setU] = useState('')
-  const [password, setP] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
+  const nav = useNavigate()
+  const loc = useLocation()
+  const [username, setUsername] = React.useState(loc.state?.justRegistered || '')
+  const [password, setPassword] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState(null)
 
-  async function submit(e) {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    setBusy(true)
-    setErr('')
+    setError(null)
+    if (!username.trim() || !password.trim()) {
+      setError('Введите логин и пароль')
+      return
+    }
+    setLoading(true)
     try {
-      await login(username, password)
-      toast('Добро пожаловать 👋')
-      window.location.assign('/')
+      await post('/api/login', { username: username.trim(), password })
+      // Сервер ставит cookie — просто уводим на главную
+      nav('/', { replace: true })
+      // можно добавить глобальный refetch профиля, если есть such контекст
     } catch (e) {
-      const map = {
-        user_exists: 'Логин занят',
-        invalid_username: 'Логин слишком короткий',
-        invalid_password: 'Пароль слишком короткий',
-        invalid_credentials: 'Неверный логин или пароль',
-        timeout: 'Сервер не отвечает (таймаут)',
-        network: 'Сетевая ошибка',
-        server_error: 'Ошибка сервера',
-      }
-      setErr(map[e.message] || e.message || 'Ошибка')
+      if (e.status === 401) setError('Неверный логин или пароль')
+      else if (e.code === 'network') setError('Нет соединения с сервером')
+      else setError('Не удалось войти')
     } finally {
-      setBusy(false)
+      setLoading(false)
     }
   }
 
   return (
-    <Card className="max-w-sm mx-auto mt-24 space-y-4">
-      <h2 className="heading text-2xl">Вход</h2>
-      {err && <div className="text-red-400 text-sm">{err}</div>}
-      <form onSubmit={submit} className="space-y-3">
-        <Input placeholder="Логин" value={username} onChange={(e) => setU(e.target.value)} />
-        <Input
+    <form onSubmit={onSubmit} className="glass p-6 rounded-2xl max-w-md mx-auto">
+      <h2 className="text-xl font-semibold mb-4">Вход</h2>
+      {error && <div className="mb-3 text-sm text-red-300">{error}</div>}
+      <div className="grid gap-3">
+        <input
+          className="input"
+          placeholder="Логин"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
+        />
+        <input
+          className="input"
           type="password"
           placeholder="Пароль"
           value={password}
-          onChange={(e) => setP(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
         />
-        <Button variant="primary" type="submit" disabled={busy} className="w-full">
-          {busy ? 'Входим…' : 'Войти'}
-        </Button>
-      </form>
-      <div className="text-sm text-white/60">
-        Нет аккаунта?{' '}
-        <a href="/register" className="underline">
-          Зарегистрируйтесь
-        </a>
+        <button disabled={loading} className="btn btn-primary disabled:opacity-60">
+          {loading ? 'Входим…' : 'Войти'}
+        </button>
       </div>
-    </Card>
+    </form>
   )
 }

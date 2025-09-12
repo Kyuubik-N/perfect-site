@@ -1,73 +1,75 @@
-import { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
-import Card from '../ui/Card'
-import Input from '../ui/Input'
-import Button from '../ui/Button'
-import { useToast } from '../toast/Toaster'
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import { post } from '../../lib/api'
 
 export default function RegisterForm() {
-  const { register } = useAuth()
-  const { toast } = useToast()
-  const [u, setU] = useState('')
-  const [p, setP] = useState('')
-  const [p2, setP2] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
+  const nav = useNavigate()
+  const [username, setUsername] = React.useState('')
+  const [password, setPassword] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState(null)
 
-  async function submit(e) {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    if (p !== p2) return setErr('Пароли не совпадают')
-    if (p.length < 6) return setErr('Минимум 6 символов')
-    setBusy(true)
-    setErr('')
+    setError(null)
+    if (!username.trim() || !password.trim()) {
+      setError('Введите логин и пароль')
+      return
+    }
+    if (password.length < 6) {
+      setError('Пароль должен быть не короче 6 символов')
+      return
+    }
+    setLoading(true)
     try {
-      await register(u, p)
-      toast('Аккаунт создан ✅')
-      window.location.assign('/')
+      await post('/api/register', { username: username.trim(), password })
+      // Успех: перенаправляем на логин (или автологин — можно включить при желании)
+      nav('/login', { replace: true, state: { justRegistered: username.trim() } })
     } catch (e) {
-      const map = {
-        user_exists: 'Логин занят',
-        invalid_username: 'Логин слишком короткий',
-        invalid_password: 'Пароль слишком короткий',
-        invalid_credentials: 'Неверный логин или пароль',
-        timeout: 'Сервер не отвечает (таймаут)',
-        network: 'Сетевая ошибка',
-        server_error: 'Ошибка сервера',
+      if (e.status === 409 || e.code === 'username_taken' || /занято/i.test(e.message || '')) {
+        setError('Имя пользователя уже занято')
+      } else if (e.status === 422) {
+        setError('Проверьте корректность полей')
+      } else if (e.code === 'network') {
+        setError('Нет соединения с сервером')
+      } else {
+        setError('Не удалось создать аккаунт')
       }
-      setErr(map[e.message] || e.message || 'Ошибка')
     } finally {
-      setBusy(false)
+      setLoading(false)
     }
   }
 
   return (
-    <Card className="max-w-sm mx-auto mt-24 space-y-4">
-      <h2 className="heading text-2xl">Регистрация</h2>
-      {err && <div className="text-red-400 text-sm">{err}</div>}
-      <form onSubmit={submit} className="space-y-3">
-        <Input placeholder="Логин" value={u} onChange={(e) => setU(e.target.value)} />
-        <Input
+    <form onSubmit={onSubmit} className="glass p-6 rounded-2xl max-w-md mx-auto">
+      <h2 className="text-xl font-semibold mb-4">Регистрация</h2>
+      {error && <div className="mb-3 text-sm text-red-300">{error}</div>}
+      <div className="grid gap-3">
+        <input
+          className="input"
+          placeholder="Логин"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
+        />
+        <input
+          className="input"
           type="password"
           placeholder="Пароль"
-          value={p}
-          onChange={(e) => setP(e.target.value)}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
         />
-        <Input
-          type="password"
-          placeholder="Повтор пароля"
-          value={p2}
-          onChange={(e) => setP2(e.target.value)}
-        />
-        <Button variant="primary" type="submit" disabled={busy} className="w-full">
-          {busy ? 'Создаём…' : 'Создать аккаунт'}
-        </Button>
-      </form>
-      <div className="text-sm text-white/60">
-        Есть аккаунт?{' '}
+        <button disabled={loading} className="btn btn-primary disabled:opacity-60">
+          {loading ? 'Создаём…' : 'Создать аккаунт'}
+        </button>
+      </div>
+      <div className="mt-3 text-sm text-white/60">
+        Уже есть аккаунт?{' '}
         <a href="/login" className="underline">
           Войти
         </a>
       </div>
-    </Card>
+    </form>
   )
 }

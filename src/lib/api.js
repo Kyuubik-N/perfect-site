@@ -1,78 +1,66 @@
-const DEFAULT_TIMEOUT = 12000
+// Унифицированный fetch с аккуратной обработкой ошибок.
+// Не считает 4xx "сетевой ошибкой" — кидает Error с .status/.code/.details
 
-async function doFetch(url, { method, body, headers, timeout }) {
-  const ctrl = new AbortController()
-  const t = setTimeout(() => ctrl.abort('timeout'), timeout)
+export async function api(path, opts = {}) {
+  const url = path.startsWith('http') ? path : path
+  const headers = new Headers(opts.headers || {})
+  let body = opts.body
+
+  // Если передали FormData — не проставляем Content-Type
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body && !isFormData) {
+    headers.set('Content-Type', 'application/json')
+    body = JSON.stringify(body)
+  }
+
+  let res
   try {
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', ...headers },
+    res = await fetch(url, {
+      method: opts.method || 'GET',
       credentials: 'include',
-      body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal,
+      headers,
+      body,
     })
-    return res
-  } finally {
-    clearTimeout(t)
+  } catch (e) {
+    const err = new Error('Сетевая ошибка. Проверьте подключение.')
+    err.code = 'network'
+    throw err
   }
-}
 
-function toErrorMessage(resStatus, data) {
-  return (data && (data.error || data.message || data.raw)) || `HTTP ${resStatus}`
-}
-
-async function parseResponse(res) {
+  const raw = await res.text().catch(() => '')
   let data = null
-  if (res.status !== 204) {
-    const txt = await res.text()
-    try {
-      data = txt ? JSON.parse(txt) : null
-    } catch {
-      data = { raw: txt }
-    }
+  try {
+    data = raw ? JSON.parse(raw) : null
+  } catch {
+    data = { message: raw }
   }
-  if (!res.ok) throw new Error(toErrorMessage(res.status, data))
+
+  if (!res.ok) {
+    const map = {
+      400: 'bad_request',
+      401: 'unauthorized',
+      403: 'forbidden',
+      404: 'not_found',
+      409: 'conflict',
+      422: 'validation_error',
+      500: 'server_error',
+    }
+    const err = new Error(
+      (data && (data.message || data.error || data.code)) ||
+        (res.status === 409
+          ? 'Имя пользователя уже занято'
+          : res.status === 401
+            ? 'Неверный логин или пароль'
+            : 'Ошибка запроса'),
+    )
+    err.status = res.status
+    err.code = (data && (data.code || data.error)) || map[res.status] || 'http_error'
+    err.details = data
+    throw err
+  }
+
   return data
 }
 
-export async function api(
-  path,
-  { method = 'GET', body, headers = {}, timeout = DEFAULT_TIMEOUT } = {},
-) {
-  const opts = { method, body, headers, timeout }
-  const userBase =
-    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) ||
-    (typeof window !== 'undefined' && window.__API_BASE__)
-
-  try {
-    // 1) Try relative path (Vite proxy in dev or same-origin in prod)
-    const res = await doFetch(path, opts)
-    return await parseResponse(res)
-  } catch (e) {
-    if (e && e.name === 'AbortError') throw new Error('timeout')
-    // 2) If custom base provided, try it
-    if (userBase && typeof userBase === 'string') {
-      try {
-        return await parseResponse(await doFetch(userBase + path, opts))
-      } catch (e2) {
-        if (e2 && e2.name === 'AbortError') throw new Error('timeout')
-      }
-    }
-    // 3) Dev fallback directly to API port
-    const hosts = []
-    if (typeof window !== 'undefined' && window.location && window.location.hostname)
-      hosts.push(window.location.hostname)
-    hosts.push('127.0.0.1', 'localhost')
-    for (const h of hosts) {
-      try {
-        const base = `http://${h}:5174`
-        const res2 = await doFetch(base + path, opts)
-        return await parseResponse(res2)
-      } catch (e2) {
-        if (e2 && e2.name === 'AbortError') throw new Error('timeout')
-        // continue to next host
-      }
-    }
-    throw new Error('network')
-  }
-}
+// Хелпер для JSON-POST
+export const post = (path, body, extra) => api(path, { method: 'POST', body, ...(extra || {}) })

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev": "vite",
     "api": "tsx server/index.ts",
     "api:dev": "tsx watch server/index.ts",
     "dev:all": "concurrently -n API,WEB -c green,cyan \"npm:api:dev\" \"npm:dev\"",
@@ -13,12 +13,9 @@
     "preview": "vite preview",
     "prepare": "husky install",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev:web": "vite",
-    "dev:api": "tsx watch server/index.ts",
-    "start": "node dist/server.js"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -75,18 +72,18 @@
     "vite": "^5.4.0",
     "vite-plugin-pwa": "^1.0.3"
   },
-  "packageManager": "npm@11.6.0",
-  "description": "Kyuubik — personal cloud (notes, calendar, files)",
-  "main": "postcss.config.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Kyuubik-N/perfect-site.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Kyuubik-N/perfect-site/issues"
-  },
-  "homepage": "https://github.com/Kyuubik-N/perfect-site#readme"
+  "packageManager": "npm@11.6.0"
+
+  "scripts": {
+    "dev:web": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "dev": "concurrently -k -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write .",
+    "start": "node dist/server.js"
+  }
 }
