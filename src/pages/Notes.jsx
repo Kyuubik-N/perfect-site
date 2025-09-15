@@ -1,130 +1,282 @@
 import React from 'react'
-import Protected from '../components/Protected'
-import { ymd } from '../db'
-import { api } from '../lib/api'
-import Button from '../components/ui/Button'
-import GlassCard from '../components/GlassCard'
+import { api } from '@/lib/api'
+import { toast } from '@/components/toast/Toaster.jsx'
+import { useLocation, useNavigate } from 'react-router-dom'
+import TagInput from '@/components/TagInput.jsx'
+import Skeleton from '@/components/Skeleton.jsx'
+import EmptyState from '@/components/EmptyState.jsx'
 
-// Страница для управления заметками. Позволяет добавлять, редактировать и удалять заметки.
 export default function NotesPage() {
-  const [notes, setNotes] = React.useState([])
-  const [title, setTitle] = React.useState('')
-  const [date, setDate] = React.useState(ymd())
-  const [content, setContent] = React.useState('')
+  const [items, setItems] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [form, setForm] = React.useState({ name: '', date: '', url: '', tags: [] })
+  const [allTags, setAllTags] = React.useState([])
+  const [selTags, setSelTags] = React.useState([])
+  const [view, setView] = React.useState(() => localStorage.getItem('notesView') || 'list')
 
-  const load = React.useCallback(async () => {
-    try {
-      const rows = await api('/api/notes')
-      const mapped = rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        content: r.text,
-        date: r.date,
-        createdAt: 0,
-      }))
-      setNotes(mapped)
-    } catch (e) {
-      console.error(e)
-    }
-  }, [])
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const params = React.useMemo(() => new URLSearchParams(location.search), [location.search])
+  const q = React.useMemo(() => params.get('q')?.toLowerCase().trim() || '', [params])
+  const from = params.get('from') || ''
+  const to = params.get('to') || ''
+  const tagParams = React.useMemo(() => params.getAll('tag').map((t) => t.toLowerCase()), [params])
 
   React.useEffect(() => {
-    load()
-  }, [load])
+    let ignore = false
+    Promise.all([api.notes.list(), api.tags.list()])
+      .then(([rows, t]) => {
+        if (ignore) return
+        setItems(rows)
+        setAllTags(t.tags || [])
+        setSelTags(tagParams)
+      })
+      .catch((e) => {
+        if (e.status === 401) toast.error('Нужен вход')
+        else toast.error('Ошибка загрузки заметок')
+      })
+      .finally(() => !ignore && setLoading(false))
+    return () => (ignore = true)
+  }, [tagParams])
 
-  const onAdd = async (e) => {
+  React.useEffect(() => {
+    localStorage.setItem('notesView', view)
+  }, [view])
+
+  const filtered = React.useMemo(() => {
+    return items.filter((n) => {
+      if (
+        q &&
+        !((n.name || '').toLowerCase().includes(q) || (n.url || '').toLowerCase().includes(q))
+      )
+        return false
+      if (from && (n.date || '') < from) return false
+      if (to && (n.date || '') > to) return false
+      if (selTags.length) {
+        const tags = String(n.tags || '')
+          .split(',')
+          .filter(Boolean)
+        if (!selTags.every((t) => tags.includes(t))) return false
+      }
+      return true
+    })
+  }, [items, q, from, to, selTags])
+
+  function updateQuery(next) {
+    const p = new URLSearchParams(location.search)
+    Object.entries(next).forEach(([k, v]) => {
+      if (k === 'tag') {
+        p.delete('tag')
+        for (const t of v || []) p.append('tag', t)
+      } else if (v) p.set(k, v)
+      else p.delete(k)
+    })
+    navigate(`/notes?${p.toString()}`, { replace: true })
+  }
+
+  async function addNote(e) {
     e.preventDefault()
-    if (!title.trim()) return
-    await api('/api/notes', { method: 'POST', body: { title: title.trim(), text: content, date } })
-    setTitle('')
-    setContent('')
-    await load()
+    const payload = {
+      name: form.name.trim(),
+      date: form.date || null,
+      url: form.url || null,
+      tags: form.tags,
+    }
+    if (!payload.name) return toast.error('Введите название')
+    const optimistic = { id: -Date.now(), ...payload }
+    setItems((x) => [optimistic, ...x])
+    setForm({ name: '', date: '', url: '', tags: [] })
+    try {
+      const created = await api.notes.create(payload)
+      setItems((x) => x.map((it) => (it.id === optimistic.id ? created : it)))
+      toast.success('Заметка добавлена')
+    } catch (e) {
+      setItems((x) => x.filter((it) => it.id !== optimistic.id))
+      toast.error('Не удалось добавить')
+    }
+  }
+
+  async function removeNote(id) {
+    const keep = items
+    setItems((x) => x.filter((i) => i.id !== id))
+    try {
+      await api.notes.remove(id)
+      toast.success('Удалено')
+    } catch {
+      setItems(keep)
+      toast.error('Ошибка удаления')
+    }
   }
 
   return (
-    <Protected>
-      <section className="max-w-6xl mx-auto px-6 py-10">
-        <h2 className="text-2xl font-semibold gradient-text">Заметки</h2>
-
-        {/* Форма создания новой заметки */}
-        <form onSubmit={onAdd} className="mt-6 glass p-4 flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              className="input flex-1"
-              placeholder="Заголовок"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <input
-              type="date"
-              className="input max-w-[14rem]"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <Button type="submit">Добавить</Button>
+    <div className="container-wide px-6 py-10" id="main">
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 justify-between">
+        <h1 className="text-2xl font-semibold">
+          Заметки {q && <span className="text-fg/60 text-base">· поиск: “{q}”</span>}
+        </h1>
+        <div className="flex items-center gap-2">
+          <div className="segmented">
+            <button aria-pressed={view === 'list'} onClick={() => setView('list')}>
+              Список
+            </button>
+            <button aria-pressed={view === 'grid'} onClick={() => setView('grid')}>
+              Плитка
+            </button>
           </div>
-          <textarea
-            rows={3}
-            className="input"
-            placeholder="Текст заметки (необязательно)"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-        </form>
-
-        {/* Список существующих заметок */}
-        <div className="mt-6 grid gap-4">
-          {notes.length === 0 && <div className="text-white/60">Пока нет заметок</div>}
-          {notes.map((n) => (
-            <GlassCard key={n.id} className="hover:shadow-soft transition">
-              <div className="flex items-center justify-between">
-                <div className="font-medium text-white/90">{n.title}</div>
-                <div className="text-sm text-white/60">{n.date}</div>
-              </div>
-              {n.content && (
-                <div className="mt-2 text-white/80 whitespace-pre-wrap">{n.content}</div>
-              )}
-              <div className="mt-3 flex gap-2 flex-wrap">
-                {/* Кнопка редактирования заметки */}
-                <button
-                  onClick={async () => {
-                    const newTitle = prompt('Новое название', n.title || '')
-                    if (newTitle == null) return
-                    const t = newTitle.trim() || n.title
-                    const newContent = prompt('Новый текст', n.content || '')
-                    if (newContent == null) return
-                    try {
-                      await api(`/api/notes/${n.id}`, {
-                        method: 'PATCH',
-                        body: { title: t, text: newContent, date: n.date },
-                      })
-                    } catch (e) {
-                      console.error(e)
-                    }
-                    await load()
-                  }}
-                  className="px-3 py-1.5 rounded-md focus-ring text-yellow-300 hover:bg-yellow-900/10"
-                >
-                  Изменить
-                </button>
-                {/* Кнопка удаления заметки */}
-                <button
-                  onClick={async () => {
-                    try {
-                      await api(`/api/notes/${n.id}`, { method: 'DELETE' })
-                    } finally {
-                      await load()
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-md focus-ring text-red-300 hover:bg-red-900/10"
-                >
-                  Удалить
-                </button>
-              </div>
-            </GlassCard>
-          ))}
         </div>
-      </section>
-    </Protected>
+      </div>
+
+      {/* Панель фильтров */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+        <TagInput
+          value={selTags}
+          onChange={(tags) => {
+            setSelTags(tags)
+            updateQuery({ tag: tags })
+          }}
+          suggestions={allTags}
+          placeholder="фильтр по тегам"
+        />
+        <input
+          className="input"
+          type="date"
+          value={from}
+          onChange={(e) => updateQuery({ from: e.target.value })}
+        />
+        <input
+          className="input"
+          type="date"
+          value={to}
+          onChange={(e) => updateQuery({ to: e.target.value })}
+        />
+      </div>
+
+      {/* Добавление */}
+      <form onSubmit={addNote} className="mt-6 grid gap-3 sm:grid-cols-[2fr_1fr_2fr_auto]">
+        <input
+          className="input"
+          placeholder="Название"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+        />
+        <input
+          className="input"
+          type="date"
+          value={form.date}
+          onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+        />
+        <input
+          className="input"
+          placeholder="Ссылка (необязательно)"
+          value={form.url}
+          onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+        />
+        <button className="btn btn-primary">Добавить</button>
+        <div className="sm:col-span-4">
+          <TagInput
+            value={form.tags}
+            onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+            suggestions={allTags}
+            placeholder="теги новой заметки"
+          />
+        </div>
+      </form>
+
+      {/* Список / Плитка */}
+      <div className="mt-8 grid gap-3">
+        {loading && (
+          <>
+            <Skeleton lines={2} />
+            <Skeleton lines={3} />
+            <Skeleton lines={1} />
+          </>
+        )}
+
+        {!loading && filtered.length === 0 && (
+          <EmptyState
+            title="Ничего не найдено"
+            subtitle="Сними фильтры или добавь первую заметку"
+            action={
+              <a href="#main" className="btn btn-primary">
+                Добавить заметку
+              </a>
+            }
+          />
+        )}
+
+        {!loading &&
+          filtered.length > 0 &&
+          view === 'list' &&
+          filtered.map((n) => (
+            <div key={n.id} className="card p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <div className="font-medium">{n.name}</div>
+                <div className="text-sm text-fg/70">
+                  {n.date ? n.date : '—'}
+                  {n.url ? (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <a href={n.url} target="_blank" rel="noreferrer" className="underline">
+                        ссылка
+                      </a>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {String(n.tags || '')
+                  .split(',')
+                  .filter(Boolean)
+                  .map((t) => (
+                    <span key={t} className="chip" data-variant="accent">
+                      #{t}
+                    </span>
+                  ))}
+              </div>
+              <button onClick={() => removeNote(n.id)} className="btn btn-ghost">
+                Удалить
+              </button>
+            </div>
+          ))}
+
+        {!loading && filtered.length > 0 && view === 'grid' && (
+          <div className="grid-cards">
+            {filtered.map((n) => (
+              <div key={n.id} className="card p-5 flex flex-col gap-3">
+                <div className="text-base font-medium">{n.name}</div>
+                <div className="text-sm text-fg/70">
+                  {n.date ? n.date : '—'}{' '}
+                  {n.url && (
+                    <>
+                      ·{' '}
+                      <a className="underline" href={n.url} target="_blank" rel="noreferrer">
+                        ссылка
+                      </a>
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-auto">
+                  {String(n.tags || '')
+                    .split(',')
+                    .filter(Boolean)
+                    .map((t) => (
+                      <span key={t} className="chip" data-variant="accent">
+                        #{t}
+                      </span>
+                    ))}
+                </div>
+                <div className="flex justify-end">
+                  <button onClick={() => removeNote(n.id)} className="btn btn-ghost">
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

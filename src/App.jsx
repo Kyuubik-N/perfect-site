@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Routes, Route, useLocation, Link } from 'react-router-dom'
 import { CSSTransition, SwitchTransition } from 'react-transition-group'
 
+// pages
 const NotesPage = React.lazy(() => import('./pages/Notes'))
 const CalendarPage = React.lazy(() => import('./pages/Calendar'))
 const LibraryPage = React.lazy(() => import('./pages/Library'))
@@ -12,6 +13,7 @@ const LoginPage = React.lazy(() => import('./pages/Login'))
 const RegisterPage = React.lazy(() => import('./pages/Register'))
 const SettingsPage = React.lazy(() => import('./pages/Settings'))
 
+// components
 import Navbar from './components/Navbar'
 import GlassCard from './components/GlassCard'
 import CanvasBackground3D from './components/bg/CanvasBackground3D'
@@ -19,15 +21,18 @@ import RouteEffects from './navigation/RouteEffects'
 import MobileDock from './components/MobileDock'
 import Breadcrumbs from './components/Breadcrumbs'
 import useGlobalHotkeys from './hooks/useGlobalHotkeys'
+import Footer from './components/Footer'
+import Toaster from '@/components/toast/Toaster.jsx'
+import Protected from '@/components/Protected.jsx'
 
 function HomeSection({ t }) {
   return (
-    <section className="container-wide px-6 py-16">
+    <section className="container-wide px-6 py-16" id="main">
       <div className="max-w-3xl">
-        <h1 className="heading text-4xl sm:text-5xl gradient-text">
+        <h1 className="text-4xl sm:text-5xl font-semibold gradient-text">
           {t('home.heroTitle', { defaultValue: 'Kyuubik — личное пространство' })}
         </h1>
-        <p className="mt-4 text-lg text-fg/80">
+        <p className="mt-4 text-lg opacity-85">
           {t('home.heroSubtitle', {
             defaultValue: 'Заметки, календарь и файлы — быстро и красиво.',
           })}
@@ -36,7 +41,7 @@ function HomeSection({ t }) {
           <Link to="/notes" className="btn btn-primary">
             Открыть заметки
           </Link>
-          <Link to="/files" className="btn">
+          <Link to="/files" className="btn btn-ghost">
             К файлам
           </Link>
         </div>
@@ -44,25 +49,28 @@ function HomeSection({ t }) {
 
       <div className="mt-10 grid sm:grid-cols-2 gap-6">
         <GlassCard className="p-5">
-          <div className="text-fg-strong">Быстрые действия</div>
+          <div className="text-base font-medium">Быстрые действия</div>
+          <div className="hr"></div>
           <div className="mt-3 flex gap-2 flex-wrap">
-            <Link to="/notes" className="glass-button">
+            <Link to="/notes" className="btn btn-ghost">
               + Заметка
             </Link>
-            <Link to="/files" className="glass-button">
+            <Link to="/files" className="btn btn-ghost">
               + Ссылка
             </Link>
-            <Link to="/library" className="glass-button">
+            <Link to="/library" className="btn btn-ghost">
               Библиотека
             </Link>
           </div>
         </GlassCard>
+
         <GlassCard className="p-5">
-          <div className="text-fg-strong">Советы</div>
-          <p className="mt-2 text-sm text-fg/75">
-            <b>Alt</b>+<b>1..6</b> — быстрое переключение разделов.
-            <b>g</b> затем <b>h/c/n/f/s</b> — «go to».
-            <b>/</b> — фокус на поиск.
+          <div className="text-base font-medium">Советы</div>
+          <div className="hr"></div>
+          <p className="mt-3 text-sm opacity-80">
+            Нажми <kbd>/</kbd> — фокус на поиск. <br />
+            <kbd>Alt</kbd>+<kbd>1..6</kbd> — разделы. <br />
+            <kbd>g</kbd> потом <kbd>h/c/n/f/s</kbd> — «go to».
           </p>
         </GlassCard>
       </div>
@@ -71,7 +79,7 @@ function HomeSection({ t }) {
 }
 
 function NotFound() {
-  return <div className="container-wide px-6 py-24 text-fg/75">Страница не найдена</div>
+  return <div className="container-wide px-6 py-24 opacity-80">Страница не найдена</div>
 }
 
 export default function App() {
@@ -98,41 +106,88 @@ export default function App() {
 
   return (
     <>
-      <CanvasBackground3D />
-      <a href="#content" className="skip-link">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 btn btn-ghost"
+      >
         Пропустить к контенту
       </a>
+
+      <CanvasBackground3D />
       <Navbar />
-      <Breadcrumbs />
 
-      <a className="footer-badge" href="https://vitejs.dev/" target="_blank" rel="noreferrer">
-        Сделано с <span className="mx-1">❤️</span> на Vite + React + Tailwind
-      </a>
+      <div className="container-wide px-6 pt-4">
+        <Breadcrumbs />
+      </div>
+      <RouteEffects />
 
-      <main id="content" className="pt-6 min-h-[70vh]" tabIndex={-1}>
-        <RouteEffects />
-        <React.Suspense fallback={<div className="container-wide pt-32 text-fg/70">Загрузка…</div>}>
-          <SwitchTransition>
-            <CSSTransition key={location.pathname} timeout={350} classNames="page" unmountOnExit>
-              <Routes location={location}>
-                <Route path="/" element={<HomeSection t={t} />} />
-                <Route path="/notes" element={<NotesPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/catalog" element={<CatalogPage />} />
-                <Route path="/files" element={<FilesPage />} />
-                <Route path="/library" element={<LibraryPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </CSSTransition>
-          </SwitchTransition>
-        </React.Suspense>
-      </main>
+      <React.Suspense
+        fallback={
+          <div className="container-wide px-6 py-16">
+            <div className="card p-8 animate-pulse">Загрузка…</div>
+          </div>
+        }
+      >
+        <SwitchTransition>
+          <CSSTransition key={location.pathname} classNames="fade" timeout={180}>
+            <Routes location={location}>
+              {/* public */}
+              <Route path="/" element={<HomeSection t={t} />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-      {/* мобильный док для маленьких экранов */}
+              {/* private */}
+              <Route
+                path="/notes"
+                element={
+                  <Protected>
+                    <NotesPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/files"
+                element={
+                  <Protected>
+                    <FilesPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <Protected>
+                    <CalendarPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/library"
+                element={
+                  <Protected>
+                    <LibraryPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <Protected>
+                    <SettingsPage />
+                  </Protected>
+                }
+              />
+
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </CSSTransition>
+        </SwitchTransition>
+      </React.Suspense>
+
       <MobileDock />
+      <Footer />
+      <Toaster />
     </>
   )
 }

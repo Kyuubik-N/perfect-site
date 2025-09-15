@@ -1,33 +1,58 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import React from 'react'
 
-const ToastCtx = createContext(null)
+const listeners = new Set()
 
-export function ToasterProvider({ children }) {
-  const [list, setList] = useState([])
-  const toast = useCallback((text) => {
-    const id = globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random())
-    setList((arr) => [...arr, { id, text }])
-    setTimeout(() => setList((arr) => arr.filter((t) => t.id !== id)), 2600)
-  }, [])
-  return (
-    <ToastCtx.Provider value={{ toast }}>
-      {children}
-      <div
-        className="fixed bottom-6 right-6 space-y-2 z-[60]"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {list.map((t) => (
-          <div key={t.id} className="glass px-4 py-2 rounded-xl text-sm shadow-soft">
-            {t.text}
-          </div>
-        ))}
-      </div>
-    </ToastCtx.Provider>
-  )
+export const toast = {
+  _emit(payload) {
+    for (const fn of listeners) fn(payload)
+  },
+  success(message) {
+    this._emit({ id: crypto.randomUUID?.() || String(Math.random()), type: 'success', message })
+  },
+  error(message) {
+    this._emit({ id: crypto.randomUUID?.() || String(Math.random()), type: 'error', message })
+  },
+  info(message) {
+    this._emit({ id: crypto.randomUUID?.() || String(Math.random()), type: 'info', message })
+  },
 }
 
-export function useToast() {
-  return useContext(ToastCtx)
+export default function Toaster() {
+  const [items, setItems] = React.useState([])
+
+  React.useEffect(() => {
+    const on = (t) => {
+      setItems((x) => [...x, t])
+      const ttl = setTimeout(() => dismiss(t.id), 3600)
+      return () => clearTimeout(ttl)
+    }
+    listeners.add(on)
+    return () => listeners.delete(on)
+  }, [])
+
+  function dismiss(id) {
+    setItems((x) => x.filter((i) => i.id !== id))
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {items.map((i) => (
+        <div
+          key={i.id}
+          onClick={() => dismiss(i.id)}
+          className={
+            'cursor-pointer rounded-2xl px-4 py-3 shadow-soft backdrop-blur-xs ' +
+            (i.type === 'error'
+              ? 'bg-red-600/90 text-white'
+              : i.type === 'success'
+                ? 'bg-emerald-600/90 text-white'
+                : 'bg-glass-bg text-fg')
+          }
+          role="status"
+        >
+          {i.message}
+        </div>
+      ))}
+    </div>
+  )
 }

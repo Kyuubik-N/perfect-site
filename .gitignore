@@ -1,22 +1,22 @@
-# Node / Vite
+# node / build
 node_modules/
 dist/
 .vite/
+.cache/
 *.log
 
-# Env & локальные настройки
+# env & локальные файлы
 .env
 .env.*
 *.local
 
-# SQLite
+# загрузки и база
+uploads/
 *.db
-*.db-shm
-*.db-wal
+*.db-*
 
-# ОС/редакторы
+# редакторы/OS
 .DS_Store
 Thumbs.db
-.vscode/
-
-src/**/*.d.ts
+.vscode/*
+!.vscode/extensions.json

@@ -1,51 +1,58 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react'
-import { api } from '../lib/api'
+import React, { createContext, useContext } from 'react'
+import { api } from '@/lib/api'
+import { toast } from '@/components/toast/Toaster.jsx'
 
-const AuthCtx = createContext(null)
+const AuthCtx = createContext({
+  user: null,
+  loading: true,
+  login: async (_u, _p) => {},
+  register: async (_u, _p) => {},
+  logout: async () => {},
+  setUser: () => {},
+})
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setL] = useState(true)
+  const [user, setUser] = React.useState(null)
+  const [loading, setLoading] = React.useState(true)
 
-  useEffect(() => {
-    ;(async () => {
-      try {
-        setUser(await api('/api/me'))
-      } catch (e) {
-        // If cookie is stale/invalid, clear it to avoid loops
-        const msg = e && e.message
-        if (msg === 'invalid_token' || msg === 'unauthorized') {
-          try {
-            await api('/api/logout', { method: 'POST' })
-          } catch {}
-        }
-        setUser(null)
-      } finally {
-        setL(false)
-      }
-    })()
+  // подтягиваем текущего пользователя по cookie
+  React.useEffect(() => {
+    let ignore = false
+    api
+      .me()
+      .then((res) => !ignore && setUser(res?.user ?? null))
+      .catch(() => !ignore && setUser(null))
+      .finally(() => !ignore && setLoading(false))
+    return () => (ignore = true)
   }, [])
 
   async function login(username, password) {
-    await api('/api/login', { method: 'POST', body: { username, password } })
-    setUser(await api('/api/me'))
-  }
-  async function register(username, password) {
-    await api('/api/register', { method: 'POST', body: { username, password } })
-    // cookie уже выставлена на /api/register — просто подтягиваем профиль
-    setUser(await api('/api/me'))
-  }
-  async function logout() {
-    await api('/api/logout', { method: 'POST' })
-    setUser(null)
+    const res = await api.auth.login(username, password)
+    setUser(res.user)
+    toast.success('С возвращением!')
+    return res.user
   }
 
-  const value = useMemo(() => ({ user, loading, login, register, logout }), [user, loading])
+  async function register(username, password) {
+    const res = await api.auth.register(username, password)
+    setUser(res.user)
+    toast.success('Аккаунт создан')
+    return res.user
+  }
+
+  async function logout() {
+    try {
+      await api.auth.logout()
+    } finally {
+      setUser(null)
+    }
+    toast.info('Вы вышли')
+  }
+
+  const value = { user, setUser, loading, login, register, logout }
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthCtx)
-  if (!ctx) throw new Error('useAuth must be inside <AuthProvider/>')
-  return ctx
+  return useContext(AuthCtx)
 }

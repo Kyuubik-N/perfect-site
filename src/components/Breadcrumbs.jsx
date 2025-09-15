@@ -1,34 +1,41 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-const titleMap = {
-  '/': 'Главная',
-  '/catalog': 'Каталог',
-  '/notes': 'Заметки',
-  '/files': 'Файлы',
-  '/calendar': 'Календарь',
-  '/library': 'Библиотека',
-  '/settings': 'Настройки',
-}
-
 export default function Breadcrumbs() {
-  const loc = useLocation()
-  const p = (loc.pathname || '/').replace(/\/+$/, '') || '/'
+  const { pathname } = useLocation()
+  const parts = pathname.replace(/^\/+/, '').split('/').filter(Boolean)
+  if (parts.length === 0) return null
 
-  // скрываем на главной
-  if (p === '/') return null
-
-  const title = titleMap[p] || 'Страница'
+  const crumbs = []
+  for (let i = 0; i < parts.length; i++) {
+    const href = '/' + parts.slice(0, i + 1).join('/')
+    const label = parts[i].charAt(0).toUpperCase() + parts[i].slice(1)
+    crumbs.push({ href, label })
+  }
 
   return (
-    <div className="container-wide px-4 sm:px-6 mt-20 mb-2">
-      <nav aria-label="Хлебные крошки" className="crumbs glass px-3 py-1.5">
-        <Link to="/" className="crumb">
-          Kyuubik
-        </Link>
-        <span className="mx-2 text-fg/50">/</span>
-        <span className="crumb active">{title}</span>
-      </nav>
-    </div>
+    <nav aria-label="Хлебные крошки" className="mt-2 text-sm opacity-80">
+      <ol className="flex items-center flex-wrap gap-2">
+        <li>
+          <Link to="/" className="hover:underline opacity-90">
+            Главная
+          </Link>
+        </li>
+        {crumbs.map((c, i) => (
+          <li key={c.href} className="flex items-center gap-2">
+            <span aria-hidden className="opacity-50">
+              /
+            </span>
+            {i === crumbs.length - 1 ? (
+              <span className="opacity-90">{c.label}</span>
+            ) : (
+              <Link to={c.href} className="hover:underline">
+                {c.label}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
   )
 }
